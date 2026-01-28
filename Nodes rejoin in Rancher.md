@@ -1,123 +1,203 @@
-Absolutely — here is a **generalized, clean, and professional README.md** that covers **both master and worker node re‑add procedures** for any RKE2 cluster managed via Rancher.
+Absolutely, Hemant! Here’s a **final `README.md`** that includes **both manual cleanup steps** and an **automation script** for the node cleanup, while keeping the full master/worker re‑add procedure.
+
+You can copy‑paste this directly into your repo as `README.md`.
 
 ***
 
-# Re‑Adding a Server (Master or Worker) to an RKE2 Cluster Managed by Rancher
+# Re‑Adding a Server (Master or Worker) to an RKE2 Cluster via Rancher
 
-This document provides a **general procedure** to safely remove and re‑add **any node**—master (control-plane + etcd) or worker—into an RKE2 cluster using Rancher.
+This guide explains how to safely remove and re‑add **any node**—**master** (control‑plane + etcd) or **worker**—to an **RKE2** cluster managed by **Rancher**. It includes both **manual cleanup steps** and an **automation script** you can run on the node.
 
 ***
 
-## **1. Cordon and Drain the Node**
+## Prerequisites
 
-Before removing a node, it must be gracefully removed from the cluster.
+*   Access to a healthy master node (to cordon/drain via K9s).
+*   Access to **Rancher UI**.
+*   SSH access to the target server (master or worker) being re‑added.
+*   `sudo` privileges on the target server.
 
-1.  Log in to **any active master node** (commonly master‑1).
+***
+
+## 1) Gracefully Remove the Node (Cordon & Drain)
+
+1.  Log in to **any healthy master node** (e.g., `master-1`).
 2.  Open **K9s**.
-3.  Select the node you want to re‑add.
+3.  Select the **target node** you want to re‑add.
 4.  Press:
-    *   `c` → **Cordon**
-    *   `r` → **Drain**
-
-This ensures workloads safely move to other nodes.
+    *   `c` → **Cordon** (prevent new pods from scheduling)
+    *   `r` → **Drain** (evict workloads safely)
 
 ***
 
-## **2. Delete the Node From the Cluster**
-
-Once drained:
+## 2) Delete the Node From the Cluster
 
 ### Using K9s
 
-*   Press `Ctrl + d` to delete the node.
+*   Press `Ctrl + d` on the selected node to delete it.
 
 ### Verify in Rancher UI
 
-1.  Open Rancher UI.
-2.  Check the cluster.
-3.  If the node still appears, delete it from Rancher UI.
-4.  If it doesn't disappear:
-    *   Click the **Cluster Name**
-    *   Delete from the **Nodes** view again.
+1.  Open **Rancher UI** → your **Cluster**.
+2.  Confirm the node is removed.
+3.  If still visible:
+    *   Go to **Cluster → Nodes** view and delete it again.
 
 ***
 
-## **3. Cleanup Steps on the Node**
+## 3) Cleanup on the Target Server (Manual & Automated)
 
-Log in directly to the server you want to re‑add (master or worker) and run:
+> **Run these on the server you want to re‑add** (master or worker).
+
+### Option A — **Automated Cleanup Script (Recommended)**
+
+Create the script `rke2_node_cleanup.sh` on the target server:
 
 ```bash
-./usr/local/bin/rke2-killall.sh
-./usr/local/bin/rke2-uninstall.sh
+#!/bin/bash
 
-systemctl stop rancher-system-agent.service
-systemctl disable rancher-system-agent.service
+# ---------------------------------------
+# RKE2 Cleanup Script
+# Removes all RKE2 + Rancher System Agent components
+# ---------------------------------------
 
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+NC="\033[0m" # No Color
+
+echo -e "${YELLOW}=== RKE2 Node Cleanup Script ===${NC}"
+
+# Confirm action
+read -p "This will REMOVE RKE2 and Rancher agent from this server. Continue? (y/n): " choice
+if [[ "$choice" != "y" ]]; then
+    echo -e "${RED}Aborted.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Stopping and uninstalling RKE2...${NC}"
+
+# Run kill and uninstall if scripts exist
+if [[ -f /usr/local/bin/rke2-killall.sh ]]; then
+    /usr/local/bin/rke2-killall.sh
+fi
+
+if [[ -f /usr/local/bin/rke2-uninstall.sh ]]; then
+    /usr/local/bin/rke2-uninstall.sh
+fi
+
+echo -e "${GREEN}Stopping Rancher System Agent...${NC}"
+
+# Stop rancher-system-agent
+systemctl stop rancher-system-agent.service 2>/dev/null
+systemctl disable rancher-system-agent.service 2>/dev/null
+
+# Remove service files
 rm -f /etc/systemd/system/rancher-system-agent.service
 rm -f /etc/systemd/system/rancher-system-agent.env
 
+# Reload systemd
 systemctl daemon-reload
 
+echo -e "${GREEN}Removing Rancher System Agent binary...${NC}"
 rm -f /usr/local/bin/rancher-system-agent
+
+echo -e "${GREEN}Removing Rancher and RKE2 directories...${NC}"
+rm -rf /etc/rancher/
+rm -rf /var/lib/rancher/
+rm -rf /usr/local/bin/rke2*
+
+echo -e "${GREEN}Cleanup Completed Successfully!${NC}"
+echo -e "${YELLOW}You can now re-register this node using Rancher UI.${NC}"
+```
+
+**Save & run:**
+
+```bash
+# Save the script
+sudo tee /usr/local/sbin/rke2_node_cleanup.sh >/dev/null <<'EOF'
+# (paste the script content above)
+EOF
+
+# Make it executable
+sudo chmod +x /usr/local/sbin/rke2_node_cleanup.sh
+
+# Run (interactive)
+sudo /usr/local/sbin/rke2_node_cleanup.sh
+
+# Or non-interactive
+sudo /usr/local/sbin/rke2_node_cleanup.sh -y
+```
+
+***
+
+### Option B — **Manual Cleanup (Exact commands)**
+
+If you prefer to run commands manually, execute:
+
+```bash
+# Kill & uninstall RKE2
+./usr/local/bin/rke2-killall.sh
+./usr/local/bin/rke2-uninstall.sh
+
+# Stop/disable Rancher System Agent
+systemctl stop rancher-system-agent.service
+systemctl disable rancher-system-agent.service
+
+# Remove service files
+rm -f /etc/systemd/system/rancher-system-agent.service
+rm -f /etc/systemd/system/rancher-system-agent.env
+
+# Reload systemd
+systemctl daemon-reload
+
+# Remove agent binary
+rm -f /usr/local/bin/rancher-system-agent
+
+# Remove Rancher & RKE2 data/binaries
 rm -rf /etc/rancher/
 rm -rf /var/lib/rancher/
 rm -rf /usr/local/bin/rke2*
 ```
 
-This ensures the node is **clean** and ready for fresh registration.
+> **Tip:** On some systems the scripts are at `/usr/local/bin/...` (absolute path). If the relative `./usr/local/bin/...` doesn’t exist, use the absolute path.
 
 ***
 
-## **4. Re‑Registration from Rancher UI**
+## 4) Re‑Register the Node from Rancher UI
 
-### Steps:
-
-1.  Open Rancher UI.
-2.  Click the **Cluster Name**.
-3.  Go to the **Registration** tab.
-
-### Choose the correct role:
-
-*   For **Master Node** → Select:
-    *   `etcd`
-    *   `control-plane`
-
-*   For **Worker Node** → Select only:
-    *   `worker`
-
-### Copy the registration command provided by Rancher.
+1.  Open **Rancher UI** → click your **Cluster** → **Registration** tab.
+2.  Choose the appropriate role:
+    *   **Master**: select ✅ **etcd** and ✅ **control‑plane**
+    *   **Worker**: select ✅ **worker** only
+3.  **Copy** the registration command shown.
+4.  **Run** it on the target server you just cleaned.
 
 ***
 
-## **5. Run Registration Command on the Node**
+## 5) Verify
 
-Paste and execute the copied command on the server you are re‑adding.
-
-This will:
-
-*   Install the required RKE2 components
-*   Reconnect the node to Rancher
-*   Begin provisioning
+*   Watch **Rancher UI**: node should move **Provisioning → Active/Ready**.
+*   For **masters**, ensure **etcd** and **control‑plane** show **Healthy**.
+*   For **workers**, node should be **Ready** and start taking workloads.
 
 ***
 
-## **6. Verification**
+## Troubleshooting (Optional)
 
-Return to **Rancher UI**:
-
-*   The node should appear as **Provisioning**
-*   Then **Active**
-*   For master nodes: etcd, control-plane roles should become healthy
-*   For worker nodes: it should join Ready state and start receiving workloads
-
-***
-
-## ✔️ Summary Table
-
-| Node Type  | Required Rancher Registration Selection | Expected Result                                   |
-| ---------- | --------------------------------------- | ------------------------------------------------- |
-| **Master** | etcd + control-plane                    | Joins as control-plane node, participates in etcd |
-| **Worker** | worker only                             | Joins cluster workload pool                       |
+*   If the node **still appears** in Rancher after deletion, delete from **Cluster → Nodes** and wait a minute.
+*   If the registration fails, check:
+    *   `/var/lib/rancher/rke2/agent/logs` and `/var/log/syslog`
+    *   Firewall/ports (9345 for RKE2 server, 6443 for kube‑api)
+    *   Time sync (`chrony`/`ntp`) across cluster nodes
 
 ***
 
+## Summary Table
+
+| Node Type  | Registration selection (Rancher) | Expected result                              |
+| ---------- | -------------------------------- | -------------------------------------------- |
+| **Master** | etcd + control‑plane             | Joins as control‑plane; participates in etcd |
+| **Worker** | worker                           | Joins as workload node                       |
+
+***
