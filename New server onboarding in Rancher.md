@@ -172,11 +172,3 @@ After registration, verify:
 ✔ Ensured secure Rancher communication  
 
 ---
-
-If you want next:
-- 📘 **Confluence version with panels & callouts**
-- 🧾 **README.md strictly optimized for GitHub**
-- 🧩 **Architecture / flow diagram**
-- 🔁 **Same doc for air-gapped environment**
-
-Just tell me 💪
