@@ -321,7 +321,3 @@ This runbook provides a **repeatable, auditable, and production-safe** approach 
 - [ ] Rollback path confirmed
 
 ---
-
-## License
-
-MIT License
