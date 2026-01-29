@@ -84,12 +84,6 @@ Update the CA trust:
 update-ca-trust extract
 ```
 
-Restart the RKE2 agent:
-
-```bash
-systemctl restart rke2-agent
-```
-
 > ✅ This ensures the node trusts `https://rancher.hella.com`
 
 ---
