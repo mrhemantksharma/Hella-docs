@@ -20,7 +20,7 @@ The issue was ultimately resolved by **restoring the server from backup and perf
 * Rancher message:
 
   ```
-  waiting for probes: kubelet
+  Kubelet stopped posting node status.
   ```
   
 <img width="1592" height="360" alt="image" src="https://github.com/user-attachments/assets/143faafd-196d-48ab-90e5-77f51aa46873" />
