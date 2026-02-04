@@ -44,13 +44,6 @@ This is a **production-grade, zero-trust design**.
 
 ### 2. Target Architecture
 
-![Architecture](https://media.licdn.com/dms/image/v2/D5612AQFkc6rHFof7xA/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714931377074?e=2147483647&t=GH-nifxd1aZBgHC9O6ZwOTjnBHpDR_AlUAjUYuBq62w&v=beta)
-
-![Architecture](https://miro.medium.com/1%2ASLe9Pt3WDOaFCXO__f_hdg.png)
-
-![Architecture](https://developer.hashicorp.com/_next/image?dpl=dpl_DwjFxrbK7wLVy2iSSzVnwT5aaBjy&q=75&url=https%3A%2F%2Fcontent.hashicorp.com%2Fapi%2Fassets%3Fproduct%3Dtutorials%26version%3Dmain%26asset%3Dpublic%252Fimg%252Fvault%252Fvault-integrated-storage-reference-architecture.svg%26width%3D960.66666667%26height%3D542.41207349&w=1920)
-
-#### Architecture Overview
 ```
 User
  ├── OpenBao UI (SAML) → Store secrets
