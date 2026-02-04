@@ -127,12 +127,14 @@ subjects:
   namespace: <your-app-namespace>  #CHANGE THIS ACCORDING TO THE NAMESPACE YOU ARE GOING TO USE
 ```
 
+
+##### Collect Cluster Details
 ```bash
-# Collect Cluster Details
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
-kubectl config view --raw --minify \
--o jsonpath='{.clusters[0].cluster.certificate-authority-data}' \
-| base64 -d > k8s-ca.crt
+```
+
+```bash
+kubectl config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 --decode > k8s-ca.crt
 ```
 
 ---
