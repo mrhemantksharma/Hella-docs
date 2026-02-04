@@ -87,20 +87,45 @@ Kubernetes Cluster
 📍 **Where:** `kubectl` (Kubernetes cluster), `bao` (OpenBao admin machine)
 
 #### 4.1 Kubernetes Cluster Preparation
+
+##### Create ServiceAccount
 ```bash
-# Create ServiceAccount
-kubectl create serviceaccount openbao-auth -n kube-system
+kubectl create serviceaccount openbao-auth -n <namespace>
+```
 
-# Allow TokenReview API Access
-kubectl create clusterrolebinding openbao-auth-tokenreview \
-  --clusterrole=system:auth-delegator \
-  --serviceaccount=kube-system:openbao-auth
-
-# Generate Reviewer JWT (K8s ≥ 1.24)
-kubectl -n kube-system create token openbao-auth > hs-reviewer.jwt
+##### Generate Reviewer JWT (K8s ≥ 1.24)
+```bash
+kubectl -n <namespace> create token openbao-auth > hs-reviewer.jwt
 ```
 
 ✔ JWT is **used only by OpenBao**, never by apps.
+
+##### Allow TokenReview API Access
+
+```bash
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openbao-auth-role
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts", "secrets", "pods"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-auth-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openbao-auth-role
+subjects:
+- kind: ServiceAccount
+  name: openbao-auth
+  namespace: <your-app-namespace>  #CHANGE THIS ACCORDING TO THE NAMESPACE YOU ARE GOING TO USE
+```
 
 ```bash
 # Collect Cluster Details
@@ -125,6 +150,7 @@ bao write auth/kubernetes/config \
   token_reviewer_jwt=@/path/to/hs-reviewer.jwt \
   kubernetes_host="https://<API_SERVER>:6443" \
   kubernetes_ca_cert=@/path/to/k8s-ca.crt
+  issuer="https://kubernetes.default.svc.cluster.local"
 ```
 
 ✅ Cluster is now trusted by OpenBao.
